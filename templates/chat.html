@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Data Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#1a1a1a',
+                            card: '#2d2d2d',
+                            text: '#e5e7eb',
+                            border: '#404040',
+                            input: '#333333'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 280px);
+            min-height: 400px;
+        }
+        .message {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s ease forwards;
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .typing-indicator {
+            display: none;
+            padding: 1rem;
+            background: #f3f4f6;
+            border-radius: 1rem;
+            margin: 1rem 0;
+            width: fit-content;
+            position: sticky;
+            bottom: 0;
+            left: 0;
+        }
+        .dark .typing-indicator {
+            background: #374151;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #6b7280;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .message-content {
+            max-width: 85%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .user-message {
+            background: #3b82f6;
+            color: white;
+            border-radius: 1rem 1rem 0 1rem;
+        }
+        .ai-message {
+            background: #f3f4f6;
+            color: #1f2937;
+            border-radius: 1rem 1rem 1rem 0;
+        }
+        .dark .ai-message {
+            background: #374151;
+            color: #e5e7eb;
+        }
+        .dark .user-message {
+            background: #2563eb;
+            color: white;
+        }
+        .search-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 1rem;
+        }
+        @media (max-width: 640px) {
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+        }
+        .theme-toggle {
+            transition: transform 0.3s ease;
+        }
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-dark-bg min-h-screen transition-colors duration-200">
+    <div class="container mx-auto px-4 py-4">
+        <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-4">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <h1 class="text-xl font-bold text-gray-800 dark:text-dark-text">AI Data Assistant</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Columns: {{ columns|length }}</span>
+                    <i class="fas fa-database text-blue-500 dark:text-blue-400"></i>
+                    <button id="theme-toggle" class="theme-toggle text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:block"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="chat-container overflow-y-auto mb-4 space-y-3" id="chat-messages">
+                <div class="messages-container">
+                    <!-- Messages will be added here -->
+                </div>
+                <div class="typing-indicator" id="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <!-- Search Form -->
+            <div class="bg-gray-50 dark:bg-dark-input p-3 rounded-lg mb-4">
+                <form id="search-form" class="search-form">
+                    <select name="search_by" class="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-card dark:border-dark-border dark:text-dark-text">
+                        <option value="">Select Column</option>
+                        {% for column in columns %}
+                        <option value="{{ column }}">{{ column }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="search_key" placeholder="Search..." 
+                           class="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-card dark:border-dark-border dark:text-dark-text dark:placeholder-gray-500">
+                    <button type="submit" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                </form>
+            </div>
+
+            <!-- Chat Input -->
+            <form id="chat-form" class="flex space-x-3">
+                <input type="text" id="message" name="message" placeholder="Ask about your data..." 
+                       class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-card dark:border-dark-border dark:text-dark-text dark:placeholder-gray-500">
+                <button type="submit" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const messagesContainer = chatMessages.querySelector('.messages-container');
+        const chatForm = document.getElementById('chat-form');
+        const searchForm = document.getElementById('search-form');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+
+        // Theme handling
+        function setTheme(theme) {
+            html.classList.remove('light', 'dark');
+            html.classList.add(theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        setTheme(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.classList.contains('dark') ? 'light' : 'dark';
+            setTheme(currentTheme);
+        });
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message flex ${isUser ? 'justify-end' : 'justify-start'}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = `message-content p-3 ${isUser ? 'user-message' : 'ai-message'}`;
+            messageContent.textContent = content;
+            
+            messageDiv.appendChild(messageContent);
+            messagesContainer.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            typingIndicator.style.display = 'block';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.style.display = 'none';
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            
+            addMessage(message, true);
+            messageInput.value = '';
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `message=${encodeURIComponent(message)}`
+                });
+                
+                const data = await response.json();
+                hideTypingIndicator();
+                addMessage(data.response);
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('Sorry, there was an error processing your request.');
+            }
+        });
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(searchForm);
+            const searchKey = formData.get('search_key');
+            const searchBy = formData.get('search_by');
+            
+            if (!searchKey || !searchBy) {
+                addMessage('Please select a column and enter a search term.', false);
+                return;
+            }
+            
+            showTypingIndicator();
+            
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                hideTypingIndicator();
+                
+                if (data.found) {
+                    addMessage(`Found matching record:\n${JSON.stringify(data.data, null, 2)}`, false);
+                } else {
+                    addMessage(data.message, false);
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('Sorry, there was an error processing your search.');
+            }
+        });
+
+        // Add welcome message
+        addMessage('Hello! I\'m your AI Data Assistant. I can help you analyze and search through your Excel data. What would you like to know?', false);
+    </script>
+</body>
+</html> 

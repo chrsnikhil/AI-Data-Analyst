@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Excel File</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#1a1a1a',
+                            card: '#2d2d2d',
+                            text: '#e5e7eb',
+                            border: '#404040',
+                            input: '#333333'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .upload-container {
+            min-height: 400px;
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .upload-icon {
+            transition: transform 0.3s ease;
+        }
+        .file-input-wrapper:hover .upload-icon {
+            transform: scale(1.1);
+        }
+        .drag-area {
+            border: 2px dashed #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .dark .drag-area {
+            border-color: #404040;
+        }
+        .drag-area.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .dark .drag-area.active {
+            background-color: #1e3a8a;
+        }
+        .theme-toggle {
+            transition: transform 0.3s ease;
+        }
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background-color: #f3f4f6;
+        }
+        .dark .file-info {
+            background-color: #374151;
+        }
+        .file-info.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-dark-bg min-h-screen transition-colors duration-200">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto">
+            <div class="bg-white dark:bg-dark-card rounded-lg shadow-lg p-6">
+                <div class="flex justify-end mb-4">
+                    <button id="theme-toggle" class="theme-toggle text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:block"></i>
+                    </button>
+                </div>
+                <div class="text-center mb-8">
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-dark-text mb-2">AI Data Assistant</h1>
+                    <p class="text-gray-600 dark:text-gray-400">Upload your Excel file to start analyzing your data</p>
+                </div>
+
+                <div class="upload-container flex flex-col items-center justify-center">
+                    <form action="/upload" method="post" enctype="multipart/form-data" class="w-full">
+                        <div class="drag-area p-8 rounded-lg text-center cursor-pointer mb-4">
+                            <div class="file-input-wrapper w-full">
+                                <div class="flex flex-col items-center">
+                                    <i class="fas fa-file-excel text-4xl text-blue-500 dark:text-blue-400 mb-4 upload-icon"></i>
+                                    <p class="text-gray-600 dark:text-gray-400 mb-2">Drag and drop your Excel file here</p>
+                                    <p class="text-gray-500 dark:text-gray-500 text-sm">or</p>
+                                    <button type="button" class="mt-2 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                                        Browse Files
+                                    </button>
+                                    <input type="file" name="file" accept=".xlsx,.xls" class="w-full">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="file-info" id="file-info">
+                            <div class="flex items-center justify-center space-x-2">
+                                <i class="fas fa-file-excel text-blue-500 dark:text-blue-400"></i>
+                                <span class="text-gray-700 dark:text-dark-text" id="file-name"></span>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                                <i class="fas fa-upload mr-2"></i>Upload File
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <p>Supported formats: .xlsx, .xls</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dragArea = document.querySelector('.drag-area');
+        const fileInput = document.querySelector('input[type="file"]');
+        const browseButton = document.querySelector('button[type="button"]');
+        const themeToggle = document.getElementById('theme-toggle');
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const html = document.documentElement;
+
+        // Theme handling
+        function setTheme(theme) {
+            html.classList.remove('light', 'dark');
+            html.classList.add(theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        setTheme(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.classList.contains('dark') ? 'light' : 'dark';
+            setTheme(currentTheme);
+        });
+
+        function updateFileInfo(file) {
+            if (file) {
+                fileName.textContent = file.name;
+                fileInfo.classList.add('show');
+            } else {
+                fileInfo.classList.remove('show');
+                fileName.textContent = '';
+            }
+        }
+
+        // Handle drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dragArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dragArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dragArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dragArea.classList.add('active');
+        }
+
+        function unhighlight(e) {
+            dragArea.classList.remove('active');
+        }
+
+        dragArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                updateFileInfo(files[0]);
+            }
+        }
+
+        // Handle browse button click
+        browseButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                dragArea.classList.add('active');
+                updateFileInfo(fileInput.files[0]);
+            } else {
+                dragArea.classList.remove('active');
+                updateFileInfo(null);
+            }
+        });
+    </script>
+</body>
+</html> 

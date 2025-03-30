@@ -1,0 +1,6 @@
+flask
+pandas
+mistralai>=1.0.0
+python-dotenv
+openpyxl
+tenacity 
