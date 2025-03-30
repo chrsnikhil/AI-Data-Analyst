@@ -1,6 +1,7 @@
-flask
-pandas
-mistralai>=1.0.0
-python-dotenv
-openpyxl
-tenacity 
+flask==3.0.2
+pandas==2.2.1
+mistralai==0.0.10
+python-dotenv==1.0.1
+openpyxl==3.1.2
+tenacity==8.2.3
+gunicorn==21.2.0 
